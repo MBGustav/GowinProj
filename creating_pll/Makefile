@@ -1,4 +1,4 @@
-GOWIN_PACK ?= /home/gustav/.local/bin/gowin_pack
+GOWIN_PACK ?= $(HOME)/.local/bin/gowin_pack
 BOARD=tangnano9k
 FAMILY=GW1N-9C
 MKDIR=mkdir -p
