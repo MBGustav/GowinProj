@@ -5,6 +5,10 @@ module tb_FPU;
 
 localparam CLK_PERIOD = 10;
 
+`define INFO;
+`define WARN;
+
+
 
 reg clk = 0;
 reg rst_n  =0;
@@ -26,7 +30,6 @@ initial begin
     clk<=0;instr_received <=0;
     $dumpfile("tb_.vcd");
     $dumpvars(0, tb_FPU);
-    $dumpvars(0, exp_res);
 end
 
 initial begin
@@ -34,45 +37,75 @@ initial begin
     #(CLK_PERIOD) rst_n<=0;
     #(CLK_PERIOD*2) rst_n<=1;clk<=0;
     #1
-    //1
+    //[special case] -1
     test_operation(`FMUL,
-                32'h3f800000, //1.0
-                32'h3f800000, //1.0
-                32'h3f800000);//1.0
+                    32'h3f800000, //1.0
+                    32'h3f800000, //1.0
+                    32'h3f800000);//1.0
 
-    //2
+    //[special case] 2
     test_operation(`FMUL,
-                   32'h3f828f5c,
-                   32'h3f800000,
-                   32'h3f828f5c);
+                    32'h3f828f5c,
+                    32'h3f800000,
+                    32'h3f828f5c);
     //3
     test_operation(`FMUL,
-                   32'h3f828f5c,    //1.02
-                   32'h3f800000,    //1.00[s=0,exp=127,m=0]
-                   32'h3f828f5c);   //1.02
+                    32'h3f828f5c,    //1.02
+                    32'h3f800000,    //1.00[s=0,exp=127,m=0]
+                    32'h3f828f5c);   //1.02
     //4
     test_operation(`FMUL,
-                   32'h7f800000,    // inf
-                   32'h3fc00000,    // 1.5
-                   32'h7f800000);   // inf
-
-    //5
+                    32'h7f800000,    // inf
+                    32'h3fc00000,    // 1.5
+                    32'h7f800000);   // inf
+    // 5 - NaN
     test_operation(`FMUL,
-                   32'h7f800000,    // inf
-                   32'h00000000,    // 0.0
-                   32'h7f800001);   // NaN
+                    32'h7f800100,    // NaN
+                    32'h3fc00000,    // 1.5
+                    32'h7f800100);   // NaN
 
     //6
     test_operation(`FMUL,
-                   32'hbe99999a,    // -0.3
-                   32'h43fa2000,    // +500.25
-                   32'hc316c000);   // -150.75
+                    32'h7f800000,    // inf
+                    32'h00000000,    // 0.0
+                    32'h7f800001);   // NaN
+
+    //6
+    test_operation(`FMUL,
+                    32'hbf000000,    // -0.5
+                    32'h43fa2000,    // +500.25
+                    32'hc37a2000);   // -250.125
     //7
     test_operation(`FMUL,
-                   32'h410e147b,    // 8.88
-                   32'h42814af5,    // 64.6464
-                   32'h440f83d8);   // 574.060032     
+                    32'h410e147b,    // 8.88
+                    32'h42814af5,    // 64.6464
+                    32'h440f83d8);   // 574.060032     
+    
+    //8 - some random numbers
+    test_operation(`FMUL,
+                    32'h3e05c28f,    // 0.130625
+                    32'h447a0000,    // 1000.00
+                    32'h4302999A);   // 130.625     
 
+    test_operation(`FMUL,
+                32'h3E3FE28F,    // 0.18738769
+                32'h447A0000,    // 1000.00
+                32'h433B6340);   // 187.3877
+
+    test_operation(`FMUL,
+                32'h3E3FE28F,    // 0.18738769
+                32'h447A0000,    // 1000.00
+                32'h433B6340);   // 187.3877
+
+    test_operation(`FMUL,
+                32'h291AA753,    // 3.434E-14
+                32'h628810E3,    // 1.254987E+21
+                32'h4C24662F);   // 43096252.0
+
+    test_operation(`FMUL,
+                32'h29000001,    // 2.8421713E-14
+                32'h62800001,    // 1.1805918E+21
+                32'h4C000002);   // 33554440.0
     rst_n<=1;
     #(CLK_PERIOD*100) $finish(2);
 end
@@ -81,21 +114,22 @@ task test_operation;
     input  [4:0] opcode;
     input [31:0] r1, r2, exp_val;
     begin 
-
-        total_test=total_test+1;
-        // tick_exec<=1;
-        $display("-------Check Nro %0d----------", total_test);
         
+        total_test=total_test+1;
         instr_received<=1; 
         op_mask <= opcode;reg1 <= r1; reg2 <= r2;exp_res <= exp_val;  
         #(CLK_PERIOD) instr_received<=0;
         #(CLK_PERIOD*10) // wait for execution
         // instr_received<=0;
 
-        $write("value 1: ");print_converted(r1);
-        $write("Value 2: ");print_converted(r2);
-        $write("Result : ");print_converted(reg_lo);
-        $write("Expect : ");print_converted(exp_val);
+        // `ifdef INFO
+        $display("[INFO] -------Check - %0d----------", total_test);
+        $write  ("[INFO] value 1: ");print_converted(r1);
+        $write  ("[INFO] Value 2: ");print_converted(r2);
+        // `else
+        $write  ("[INFO] Result : ");print_converted(reg_lo);
+        $write  ("[INFO] Expect : ");print_converted(exp_val);
+        // `endif
     end
 endtask
 
@@ -122,12 +156,13 @@ task print_converted;
             if (mant == 23'h000000) $display("Inf (Infinity)");
             else                    $display("NaN (Not a Number)");
 
-        end else if (exp >= 8'h00 && exp < 8'hFF) begin
+        end else if (exp > 8'h00 && exp < 8'hFF) begin
             // Normalized value
             fp_value = (1.0 + mant /2.0**23) * (2.0 ** ($signed({1'b0,exp}) - 127));
-            $display("%+3.4f \t %b_%b_%b", fp_value, sign,exp,mant);
+            // $display("%+3.4f \t %h", fp_value, {sign,exp,mant});
+            if(fp_value > 10000.0 || fp_value < 0.002)     $display("%+5.4e \t %b_%b_%b", fp_value, sign,exp,mant);
+            else $display("%+5.4f \t %b_%b_%b", fp_value, sign,exp,mant); 
         end
-    
     end
 endtask
 

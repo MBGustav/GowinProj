@@ -36,5 +36,8 @@ bin/${TEST_PROJECT}_tb.vvp: tb/${TEST_PROJECT}_tb.v
 testbench :bin/${TEST_PROJECT}_tb.vvp
 	vvp -n bin/${TEST_PROJECT}_tb.vvp -l-
 
+clean_tb : 
+	rm bin/${TEST_PROJECT}_tb.vvp
+
 .PHONY: load testbench
 .INTERMEDIATE: ${PROJECT}_pnr.json ${PROJECT}.json bin/${TEST_PROJECT}_tb.vvp
