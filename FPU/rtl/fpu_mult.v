@@ -143,12 +143,12 @@ module fpu_mult #(
     end
 
 
-    mult_normalizer m_norm(
-        .clk(clk),
-        .rst_n(rst_n),
-        .in_unorm(prod), 
-        .out_norm(prod_normalized), 
-        .in_exp(exp_unorm), //TODO: corrigir erro de impedancia do sinal out_exp normalizado
-        .out_exp(exp_norm));
+    // mult_normalizer m_norm(
+    //     .clk(clk),
+    //     .rst_n(rst_n),
+    //     .in_unorm(prod), 
+    //     .out_norm(prod_normalized), 
+    //     .in_exp(exp_unorm), //TODO: corrigir erro de impedancia do sinal out_exp normalizado
+    //     .out_exp(exp_norm));
 
 endmodule

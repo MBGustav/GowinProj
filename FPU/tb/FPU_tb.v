@@ -8,8 +8,6 @@ localparam CLK_PERIOD = 10;
 `define INFO;
 `define WARN;
 
-
-
 reg clk = 0;
 reg rst_n  =0;
 reg [4:0]  op_mask =0;
@@ -22,7 +20,7 @@ wire[31:0] reg_lo;
 wire[31:0] reg_hi;
 
 integer total_test =0;
-
+integer tick = 0;
 
 always #(CLK_PERIOD/2) clk=~clk;
 
@@ -37,6 +35,7 @@ initial begin
     #(CLK_PERIOD) rst_n<=0;
     #(CLK_PERIOD*2) rst_n<=1;clk<=0;
     #1
+    $display("--- MULTIPLICATION TEST ---");
     //[special case] -1
     test_operation(`FMUL,
                     32'h3f800000, //1.0
@@ -106,6 +105,47 @@ initial begin
                 32'h29000001,    // 2.8421713E-14
                 32'h62800001,    // 1.1805918E+21
                 32'h4C000002);   // 33554440.0
+
+     test_operation(`FMUL,
+                    32'h3f800000, //1.0
+                    32'h3f800000, //1.0
+                    32'h3f800000);//1.0
+
+    $display("--- COMPARATION TEST ---");
+
+    test_operation(`FMAX,
+                    32'h43fa2000,    // +500.25
+                    32'hbf000000,    // -0.5 
+                    32'h43fa2000);
+
+    test_operation(`FMIN,
+                    32'h43fa2000,    // +500.25
+                    32'hbf000000,    // -0.5 
+                    32'hbf000000);
+
+    test_operation(`FMAX,
+                    32'h7f800000,    // inf
+                    32'h3fc00000,    // 1.5
+                    32'h7f800000);   
+     test_operation(`FMAX,
+                    32'h7f800000,    // inf
+                    32'h00000000,    // 0.0
+                    32'h7f800000); 
+
+    test_operation(`FMAX,
+                    32'hbf010000,    // NaN
+                    32'hbf000000,    // inf
+                    32'hbf010000);
+    
+    test_operation(`FMAX,
+                    32'hbf000000,    // inf
+                    32'hbf010000,    // NaN
+                    32'hbf000000);
+    test_operation(`FMAX,
+                    32'h410e147b,    // 8.88
+                    32'h42814af5,    // 64.6464
+                    32'h440f83d8);   // 574.060032     
+    
     rst_n<=1;
     #(CLK_PERIOD*100) $finish(2);
 end
@@ -124,11 +164,16 @@ task test_operation;
 
         // `ifdef INFO
         $display("[INFO] -------Check - %0d----------", total_test);
+        $display("[INFO] Oper   : %s",  op_mask == `FMAX ? "FMAX" :
+                                        op_mask == `FMUL ? "FMUL" :
+                                        op_mask == `FDIV ? "FDIV" :
+                                        op_mask == `FADD ? "FADD" : "invalid");
         $write  ("[INFO] value 1: ");print_converted(r1);
         $write  ("[INFO] Value 2: ");print_converted(r2);
         // `else
         $write  ("[INFO] Result : ");print_converted(reg_lo);
         $write  ("[INFO] Expect : ");print_converted(exp_val);
+        // $display("[INFO] Ticks  : %d", tick);1
         // `endif
     end
 endtask
@@ -150,7 +195,7 @@ task print_converted;
         if (exp == 8'h00 && mant == 23'h00) begin
             // Special value: +-0
             fp_value = (sign == 1'b1) ? -0.0 : 0.0;
-            $display("%+3.4f", fp_value);
+            $display("%3.4f", fp_value);
         end else if (exp == 8'hFF) begin
             // Special value (NaN or Inf)
             if (mant == 23'h000000) $display("Inf (Infinity)");
@@ -161,7 +206,7 @@ task print_converted;
             fp_value = (1.0 + mant /2.0**23) * (2.0 ** ($signed({1'b0,exp}) - 127));
             // $display("%+3.4f \t %h", fp_value, {sign,exp,mant});
             if(fp_value > 10000.0 || fp_value < 0.002)     $display("%+5.4e \t %b_%b_%b", fp_value, sign,exp,mant);
-            else $display("%+5.4f \t %b_%b_%b", fp_value, sign,exp,mant); 
+            else $display("%s%5.4f \t %b_%b_%b",sign? "-":"+", fp_value, sign,exp,mant); 
         end
     end
 endtask

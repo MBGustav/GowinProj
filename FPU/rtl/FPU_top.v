@@ -1,6 +1,7 @@
 `include "constraint.vh"
 `include "fpu_mult.v"
-
+// `include "fpu_div.v"
+`include "fpu_cmp.v"
 
 module FPU_top #(
     parameter BIT_WIDTH  = 32,
@@ -12,7 +13,7 @@ module FPU_top #(
     input wire [OP_WIDTH-1 :0] op_mask,
     input wire [BIT_WIDTH-1:0] input_1, input_2,
     output reg unit_busy,
-    output reg [BIT_WIDTH-1:0] reg_lo, reg_hi
+    output [BIT_WIDTH-1:0] reg_lo, reg_hi
 );
 
     localparam FSM_IDLE  = 3'd0,
@@ -21,23 +22,19 @@ module FPU_top #(
                FSM_EXCEP = 3'd3;
     
     reg [4:0] fsm_state;
-    reg tick_mult;
+    
     reg instr_except;
-    wire instr_finished;
     reg [31:0] fcsr; //aka register control status.
     reg [OP_WIDTH-1:0] actual_op;
     reg [BIT_WIDTH-1:0] reg1, reg2;
 
-    reg mul_tick;
 
     wire[BIT_WIDTH-1:0]add_lo, add_hi,
                        sub_lo, sub_hi,
                        cmp_lo, cmp_hi,
                        mul_lo, mul_hi,
                        div_lo, div_hi,
-                       min_lo, min_hi,
-                       max_lo, max_hi;
-    // wire instr_received;
+                       min_lo, min_hi;
 
     // signals for both numbers (rs1 and rs2)
     wire [1:0] exp_max = {&reg1[`FP_EXP],  &reg2[`FP_EXP]}; 
@@ -48,23 +45,24 @@ module FPU_top #(
     wire [1:0] is_NaN  = exp_max && reg1[`FP_FRCT] != 0;
     wire [1:0] is_zero = exp_min;
     wire [5:0] reg_params = {is_inf, is_NaN, is_zero};
-    
-    // wire [BIT_WIDTH-1:0] mul_lo, mul_hi;
 
-    // trigger to activate FPU
-    // assign instr_received = (op_mask == `FADD ? 1'b1 :
-    //                          op_mask == `FSUB ? 1'b1 :
-    //                          op_mask == `FCMP ? 1'b1 :
-    //                          op_mask == `FMUL ? 1'b1 :
-    //                          op_mask == `FDIV ? 1'b1 :
-    //                          op_mask == `FMIN ? 1'b1 :
-    //                          op_mask == `FMAX ? 1'b1 : 1'b0);
+    wire instr_finished, div_finished, mul_finished, cmp_finished,min_finished;
+
+
+    assign {reg_lo, reg_hi} =   actual_op == `FADD ? {add_lo, add_hi} :
+                                actual_op == `FSUB ? {sub_lo, sub_hi} :
+                                actual_op == `FMUL ? {mul_lo, mul_hi} :
+                                // actual_op == `FCMP ? {cmp_lo, cmp_hi} :
+                                // actual_op == `FDIV ? {div_lo, div_hi} :
+            actual_op == `FMIN || actual_op == `FMAX ? {min_lo, min_hi} : 32'bx;
+                                
+    assign instr_finished = div_finished | mul_finished | min_finished;
 
     //FSM Logic
     always @(posedge clk ) begin
         case (fsm_state) 
             FSM_IDLE : fsm_state <= instr_received ? FSM_OPER  : FSM_IDLE;
-            FSM_OPER : fsm_state <= instr_finished ? FSM_READY : FSM_OPER;
+            FSM_OPER : fsm_state <= (|instr_finished)? FSM_READY : FSM_OPER;
             FSM_READY: fsm_state <= FSM_IDLE; // ToDo: exception
             default:   fsm_state <= FSM_IDLE;
         endcase
@@ -72,42 +70,21 @@ module FPU_top #(
 
     always @(posedge clk) begin
         if(~rst_n) begin
-            {reg_hi, reg_lo, tick_mult} <= 0;
-            // instr_finished <=0;
             instr_except <=0;
-            // instr_received <=0;
             fsm_state <= FSM_IDLE;
-
         end else begin
             case (fsm_state)
                 FSM_IDLE : begin
                     unit_busy <=0;
-                    // reg_lo    <= 0;
-                    // reg_hi    <= 0;
                     actual_op <= op_mask;
                     reg1      <= input_1; //store value from input
                     reg2      <= input_2; 
                 end
-
                 FSM_OPER : begin
                     unit_busy <=1;
-                    mul_tick <= 1'b1;
-
                 end
                 FSM_READY : begin
-                    case (actual_op)
-                        `FADD: {reg_lo,reg_hi} <= {add_lo, add_hi};
-                        `FSUB: {reg_lo,reg_hi} <= {sub_lo, sub_hi};
-                        `FCMP: {reg_lo,reg_hi} <= {cmp_lo, cmp_hi};
-                        `FMUL: {reg_lo,reg_hi} <= {mul_lo, mul_hi};
-                        `FDIV: {reg_lo,reg_hi} <= {div_lo, div_hi};
-                        `FMIN: {reg_lo,reg_hi} <= {min_lo, min_hi};
-                        `FMAX: {reg_lo,reg_hi} <= {max_lo, max_hi};
-                        default: {reg_lo,reg_hi} <= 0;
-                    endcase
-                    actual_op <= {OP_WIDTH{1'b1}};//clean value from op
                     unit_busy <=0;
-                    mul_tick <= 1'b0;
                 end
                 // FSM_EXCEP : begin end
                 // default: begin end
@@ -120,13 +97,26 @@ module FPU_top #(
     )mult_module (
         .clk(clk),
         .rst_n(rst_n),
-        .tick_exec(instr_received && (op_mask & `FMUL)),
-        .instr_finished(instr_finished),
+        .tick_exec(instr_received && (op_mask == `FMUL)),
+        .instr_finished(mul_finished),
         .reg_params(reg_params),
         .reg1(reg1),
         .reg2(reg2),
         .reg_lo(mul_lo),
         .reg_hi(mul_hi)
+    );
+
+    fpu_cmp compare_module
+    (
+        .clk(clk),
+        .rst_n(rst_n),
+        .reg_params(reg_params),
+        .instr_received(instr_received && ((actual_op == `FMAX) | (actual_op == `FMIN))),
+        .reg1(actual_op == `FMAX ? reg2 : reg1), 
+        .reg2(actual_op == `FMAX ? reg1 : reg2),
+        .instr_finished(min_finished),
+        .reg_lo(min_lo), 
+        .reg_hi(min_hi)
     );
 
 endmodule 

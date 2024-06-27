@@ -1,0 +1,58 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Wed Jun 26 20:39:48 2024
+[*]
+[dumpfile] "/home/mbgustav/Github-repos/GowinProj/FPU/tb_.vcd"
+[dumpfile_mtime] "Wed Jun 26 19:33:29 2024"
+[dumpfile_size] 21909
+[savefile] "/home/mbgustav/Github-repos/GowinProj/FPU/bin/FPU_tb.gtkw"
+[timestart] 660
+[size] 1920 1043
+[pos] -1 -1
+*-5.000000 983 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_FPU.DUT.
+[sst_width] 233
+[signals_width] 249
+[sst_expanded] 1
+[sst_vpaned_height] 308
+@28
+tb_FPU.clk
+tb_FPU.instr_received
+tb_FPU.rst_n
+@420
+tb_FPU.total_test
+@2029
+^1 /home/mbgustav/Github-repos/GowinProj/FPU/bin/op_mask.gtkw
+tb_FPU.op_mask[4:0]
+@40020
+tb_FPU.reg1[31:0]
+tb_FPU.reg2[31:0]
+tb_FPU.exp_res[31:0]
+tb_FPU.reg_lo[31:0]
+@24
+tb_FPU.DUT.mult_module.m_norm.in_exp[9:0]
+tb_FPU.DUT.mult_module.m_norm.out_exp[9:0]
+@420
+tb_FPU.DUT.mult_module.exp_unorm[9:0]
+tb_FPU.DUT.mult_module.exp_norm[9:0]
+@28
+tb_FPU.exp_res[31:0]
+tb_FPU.DUT.mult_module.exp_out[9:0]
+@22
+tb_FPU.DUT.mult_module.state[3:0]
+tb_FPU.op_mask[4:0]
+tb_FPU.DUT.mult_module.m_norm.dbg_counter[32:0]
+@28
+tb_FPU.DUT.mult_module.mant_a[23:0]
+tb_FPU.DUT.mult_module.mant_b[23:0]
+tb_FPU.DUT.mult_module.m_norm.in_unorm[47:0]
+tb_FPU.DUT.mult_module.prod[47:0]
+@22
+tb_FPU.DUT.mult_module.prod_normalized[47:0]
+tb_FPU.DUT.mult_module.prod[47:0]
+@28
+tb_FPU.DUT.mult_module.prod_normalized[47:0]
+tb_FPU.DUT.mult_module.mant_out[23:0]
+tb_FPU.DUT.mult_module.m_norm.out_norm[47:0]
+[pattern_trace] 1
+[pattern_trace] 0
